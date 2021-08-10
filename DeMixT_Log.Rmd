@@ -7,6 +7,14 @@ header-includes: \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
 # DeMixT Log
 Cell type-specific deconvolution of heterogeneous tumor samples with two or three components using expression data from RNAseq or microarray platforms.
 
+
+## Update from version 1.6.0 to 1.8.1
+
+Fixed error messenge when process vignette 'DeMixT.md' failed.
+
+Fixed typo in the documentation of function DeMixT, DeMixT_DE and DeMixT_GS.
+
+
 ## Update from version 1.4.0 to 1.6.0
 
 Gene expression data of normal tissues (Lung, Prostate and Thyroid) from the GTEx study are included.
