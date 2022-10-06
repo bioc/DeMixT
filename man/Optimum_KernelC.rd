@@ -23,56 +23,56 @@ Optimum_KernelC(
 }
 \arguments{
 \item{inputdata}{A matrix of expression data (e.g gene expressions) from
-reference (e.g. normal) and mixed samples (e.g. mixed tumor samples). It is a
-\eqn{G*M} matrix where \eqn{G} is the number of genes and \eqn{M} is the 
-number of samples including reference and mixed samples. Samples with the 
+reference (e.g. normal) and mixed samples (e.g. mixed tumor samples). It is
+a \eqn{G*M} matrix where \eqn{G} is the number of genes and \eqn{M} is the
+number of samples including reference and mixed samples. Samples with the
 same tissue type should be placed together in columns (e.g. cbind(normal
 amples, mixed tumor samples).}
 
 \item{groupid}{A vector of indicators to denote if the corresponding samples
 are reference samples or mixed tumor samples. DeMixT is able to deconvolve
 mixed tumor samples with at most three components. We use 1 and 2 to denote
-the samples referencing the first and the second known component in mixed 
+the samples referencing the first and the second known component in mixed
 tumor samples. We use 3 to indicate mixed tumor samples prepared to be
-deconvolved. For example, in two-component deconvolution, we have 
-c(1,1,...,3,3) and in three-component deconvolution, we have 
+deconvolved. For example, in two-component deconvolution, we have
+c(1,1,...,3,3) and in three-component deconvolution, we have
 c(1,1,...,2,2,...,3,3).}
 
 \item{nspikein}{The number of spikes in normal reference used for proportion
-estimation. The default value is \eqn{ min(200, 0.3*My)}, where 
-\eqn{My} the number of mixed tumor samples. If it is set to 0, proportion 
-estimation is performed without any spike in normal reference.}
+estimation. The default value is \eqn{ min(200, 0.3*My)}, where \eqn{My} the
+number of mixed tumor samples. If it is set to 0, proportion estimation is
+performed without any spike in normal reference.}
 
-\item{setting.pi}{If it is set to 0, then deconvolution is performed without 
-any given proportions; if set to 1, deconvolution with given proportions 
-for the first and the second known component is run; if set to 2, 
-deconvolution is run with given tumor proportions. This option helps to 
-perform deconvolution in different settings. In estimation of 
-component-specific proportions, we use a subset of genes ; so when 
-it is required to deconvolve another subset of genes, we just easily plug 
-back our estimated proportions by setting this option to 1. In our two-step
-estimation strategy in a three-component setting, this option is set to 2 to
-implement the second step.}
+\item{setting.pi}{If it is set to 0, then deconvolution is performed without
+any given proportions; if set to 1, deconvolution with given proportions for
+the first and the second known component is run; if set to 2, deconvolution
+is run with given tumor proportions. This option helps to perform
+deconvolution in different settings. In estimation of component-specific
+proportions, we use a subset of genes ; so when it is required to deconvolve
+another subset of genes, we just easily plug back our estimated proportions
+by setting this option to 1. In our two-step estimation strategy in a
+three-component setting, this option is set to 2 to implement the second
+step.}
 
 \item{givenpi}{\eqn{ST}-Vector of proportions. Given the number of mixed
 tumor samples is \eqn{My(My<M)}, \eqn{ST} is set to \eqn{2*My} in a
-three-component setting and \eqn{My} in a two-component setting. When 
-setting.pi is 1, it is fixed with the given proportions for the first and the
-second known component of mixed tumor samples, or for one unknown 
-component when there is just one type of reference tissues. It has the form 
-of Vector \eqn{PiN1-1}, \eqn{PiN1-2}, ..., \eqn{PiN1-My}, \eqn{PiN2-1}, 
+three-component setting and \eqn{My} in a two-component setting. When
+setting.pi is 1, it is fixed with the given proportions for the first and
+the second known component of mixed tumor samples, or for one unknown
+component when there is just one type of reference tissues. It has the form
+of Vector \eqn{PiN1-1}, \eqn{PiN1-2}, ..., \eqn{PiN1-My}, \eqn{PiN2-1},
 \eqn{PiN2-2}, ..., \eqn{PiN2-My}.}
 
 \item{givenpiT}{\eqn{ST}-Vector of proportions. When setting.pi is set to 2,
-givenpiT is fixed with given proportions for unknown component of mixed 
+givenpiT is fixed with given proportions for unknown component of mixed
 tumor samples. This option is used when we adopt a two-step estimation
-strategy in deconvolution. It has the form of Vector  \eqn{PiT-1}, 
-\eqn{PiT-2}, ..., \eqn{PiT-My}. If option is not 2, 
-this vector can be given with any element.}
+strategy in deconvolution. It has the form of Vector \eqn{PiT-1},
+\eqn{PiT-2}, ..., \eqn{PiT-My}. If option is not 2, this vector can be given
+with any element.}
 
 \item{niter}{The number of iterations used in the algorithm of iterated
-conditional modes. A larger value can better guarantee the convergence 
-in estimation but increase the computation time.}
+conditional modes. A larger value can better guarantee the convergence in
+estimation but increase the computation time.}
 
 \item{ninteg}{The number of bins used in numerical integration for computing
 complete likelihood. A larger value can increase accuracy in estimation but
@@ -85,42 +85,40 @@ the increase of number of bins can greatly lengthen the running time.}
 
 \item{mu0}{Initial value for \eqn{\mu}. The default is 0.}
 
-\item{pi01}{Initialized proportion for first kown component. The default is 
+\item{pi01}{Initialized proportion for first kown component. The default is
 \eqn{Null} and pi01 will be generated randomly from uniform distribution.}
 
-\item{pi02}{Initialized proportion for second kown component. pi02 is needed 
-only for running a three-component model. The default is \eqn{Null} and pi02 
+\item{pi02}{Initialized proportion for second kown component. pi02 is needed
+only for running a three-component model. The default is \eqn{Null} and pi02
 will be generated randomly from uniform distribution.}
 
-\item{nthread}{The number of threads used for deconvolution when OpenMP 
-is available in the system. The default is the number of whole threads minus
+\item{nthread}{The number of threads used for deconvolution when OpenMP is
+available in the system. The default is the number of whole threads minus
 one. In our no-OpenMP version, it is set to 1.}
 }
 \value{
-\item{pi}{Matrix of estimated proportions for each known component. The first
-row corresponds to the proportion estimate of each sample for the first known
-component (groupid = 1) and the second row corresponds to that for the second
-known component (groupid = 2).}
-\item{decovExpr}{A matrix of deconvolved expression profiles corresponding to
-unknown (e.g tumor) component in mixed samples for a given subset of genes.
-Each row corresponds to one gene and each column corresponds to one sample.} 
+\item{pi}{Matrix of estimated proportions for each known component.
+The first row corresponds to the proportion estimate of each sample for the
+first known component (groupid = 1) and the second row corresponds to that
+for the second known component (groupid = 2).} \item{decovExpr}{A matrix of
+deconvolved expression profiles corresponding to unknown (e.g tumor)
+component in mixed samples for a given subset of genes. Each row corresponds
+to one gene and each column corresponds to one sample.}
 \item{decovMu}{Estimated \eqn{Mu} of log2-normal distribution for tumor
-component.}
-\item{decovSigma}{Estimated \eqn{Sigma} of log2-normal distribution for 
-tumor component.}
-\item{pi1}{An \eqn{My*I} matrix of estimated proportions for each 
-iteration, where \eqn{I} is the number of iteration, for the first 
-known component.}
-\item{pi2}{An \eqn{My*I} matrix of estimated proportions for each 
-iteration, where \eqn{I} is the number of iteration, for the second 
-known component.}
+component.} \item{decovSigma}{Estimated \eqn{Sigma} of log2-normal
+distribution for tumor component.} \item{pi1}{An \eqn{My*I} matrix of
+estimated proportions for each iteration, where \eqn{I} is the number of
+iteration, for the first known component.} \item{pi2}{An \eqn{My*I} matrix
+of estimated proportions for each iteration, where \eqn{I} is the number of
+iteration, for the second known component.}
 }
 \description{
-This function is invoked by DeMixT_GS or DeMixT_DE and DeMixT_S2 to 
-finish parameter estimation by iterated conditional mode algorithm and reconstitute
+This function is invoked by DeMixT_GS or DeMixT_DE and DeMixT_S2 to finish
+parameter estimation by iterated conditional mode algorithm and reconstitute
 gene expression profile of all components.
 }
 \examples{
+
 # Example 1: simulated two-component data
   data(test.data.2comp)
 # data.N1 <- SummarizedExperiment::assays(test.data.2comp$data.N1)[[1]]
@@ -133,10 +131,12 @@ gene expression profile of all components.
 #                 givenpi = rep(0, 2 * ncol(data.y)), 
 #                 niter = 10, ninteg = 30, tol = 10^(-4))
                 
+
 }
 \references{
-Wang Z, Cao S, Morris J S, et al. Transcriptome Deconvolution of 
-Heterogeneous Tumor Samples with Immune Infiltration. iScience, 2018, 9: 451-460.
+Wang Z, Cao S, Morris J S, et al. Transcriptome Deconvolution of
+Heterogeneous Tumor Samples with Immune Infiltration. iScience, 2018, 9:
+451-460.
 }
 \seealso{
 http://bioinformatics.mdanderson.org/main/DeMixT

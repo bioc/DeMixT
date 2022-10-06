@@ -1,78 +1,76 @@
-#' @title Estimates the proportions of mixed samples for each mixing component 
-#'
-#' @description This function is designed to estimate the deconvolved 
-#' expressions of individual mixed tumor samples for unknown component 
-#' for each gene.
-#'
-#' @param data.Y A SummarizedExperiment object of expression data from mixed 
-#' tumor samples. It is a \eqn{G} by \eqn{My} matrix where \eqn{G} is the number
-#' of genes and \eqn{My} is the number of mixed samples. Samples with the same
-#' tissue type should be placed together in columns.
-#' @param data.N1 A SummarizedExperiment object of expression data 
-#' from reference component 1 (e.g., normal). It is a \eqn{G} by \eqn{M1} matrix 
-#' where \eqn{G} is the number of genes and \eqn{M1} is the number of samples 
-#' for component 1. 
+#' Estimates the proportions of mixed samples for each mixing component
+#' 
+#' This function is designed to estimate the deconvolved expressions of
+#' individual mixed tumor samples for unknown component for each gene.
+#' 
+#' 
+#' @param data.Y A SummarizedExperiment object of expression data from mixed
+#' tumor samples. It is a \eqn{G} by \eqn{My} matrix where \eqn{G} is the
+#' number of genes and \eqn{My} is the number of mixed samples. Samples with
+#' the same tissue type should be placed together in columns.
+#' @param data.N1 A SummarizedExperiment object of expression data from
+#' reference component 1 (e.g., normal). It is a \eqn{G} by \eqn{M1} matrix
+#' where \eqn{G} is the number of genes and \eqn{M1} is the number of samples
+#' for component 1.
 #' @param data.N2 A SummarizedExperiment object of expression data from
-#' additional reference samples. It is a \eqn{G} by \eqn{M2} matrix where 
+#' additional reference samples. It is a \eqn{G} by \eqn{M2} matrix where
 #' \eqn{G} is the number of genes and \eqn{M2} is the number of samples for
 #' component 2. Component 2 is needed only for running a three-component model.
-#' @param niter The maximum number of iterations used in the algorithm of 
-#' iterated conditional modes. A larger value better guarantees 
-#' the convergence in estimation but increases the running time. The default is 
-#' 10.
+#' @param niter The maximum number of iterations used in the algorithm of
+#' iterated conditional modes. A larger value better guarantees the convergence
+#' in estimation but increases the running time. The default is 10.
 #' @param nbin The number of bins used in numerical integration for computing
 #' complete likelihood. A larger value increases accuracy in estimation but
 #' increases the running time, especially in a three-component deconvolution
 #' problem. The default is 50.
 #' @param if.filter The logical flag indicating whether a predetermined filter
 #' rule is used to select genes for proportion estimation. The default is TRUE.
-#' @param filter.sd The cut-off for the standard deviation of lognormal 
+#' @param filter.sd The cut-off for the standard deviation of lognormal
 #' distribution. Genes whose log transferred standard deviation smaller than
 #' the cut-off will be selected into the model. The default is 0.5.
 #' @param ngene.selected.for.pi The percentage or the number of genes used for
 #' proportion estimation. The difference between the expression levels from
 #' mixed tumor samples and the known component(s) are evaluated, and the most
 #' differential expressed genes are selected, which is called DE. It is enabled
-#' when if.filter = TRUE. The default is \eqn{min(1500, 0.3*G)}, where
-#' \eqn{G} is the number of genes. Users can also try using more genes,
-#' ranging from \eqn{0.3*G} to \eqn{0.5*G}, and evaluate the outcome.
+#' when if.filter = TRUE. The default is \eqn{min(1500, 0.3*G)}, where \eqn{G}
+#' is the number of genes. Users can also try using more genes, ranging from
+#' \eqn{0.3*G} to \eqn{0.5*G}, and evaluate the outcome.
 #' @param nspikein The number of spikes in normal reference used for proportion
-#' estimation. The default value is \eqn{ min(200, 0.3*My)}, where 
-#' \eqn{My} the number of mixed samples. If it is set to 0, proportion 
-#' estimation is performed without any spike in normal reference.
-#' @param mean.diff.in.CM Threshold of expression difference for selecting genes
-#' in the component merging strategy. We merge three-component to two-component
-#' by selecting genes with similar expressions for the two known components.
-#' Genes with the mean differences less than the threshold will be selected for
-#' component merging. It is used in the three-component setting, and is enabled
-#' when if.filter = TRUE. The default is 0.25.
+#' estimation. The default value is \eqn{ min(200, 0.3*My)}, where \eqn{My} the
+#' number of mixed samples. If it is set to 0, proportion estimation is
+#' performed without any spike in normal reference.
+#' @param mean.diff.in.CM Threshold of expression difference for selecting
+#' genes in the component merging strategy. We merge three-component to
+#' two-component by selecting genes with similar expressions for the two known
+#' components. Genes with the mean differences less than the threshold will be
+#' selected for component merging. It is used in the three-component setting,
+#' and is enabled when if.filter = TRUE. The default is 0.25.
 #' @param tol The convergence criterion. The default is 10^(-5).
-#' @param pi01 Initialized proportion for first kown component. The default is 
+#' @param pi01 Initialized proportion for first kown component. The default is
 #' \eqn{Null} and pi01 will be generated randomly from uniform distribution.
-#' @param pi02 Initialized proportion for second kown component. pi02 is needed 
-#' only for running a three-component model. The default is \eqn{Null} and pi02 
+#' @param pi02 Initialized proportion for second kown component. pi02 is needed
+#' only for running a three-component model. The default is \eqn{Null} and pi02
 #' will be generated randomly from uniform distribution.
 #' @param nthread The number of threads used for deconvolution when OpenMP is
-#' available in the system. The default is the number of whole threads minus one.
-#' In our no-OpenMP version, it is set to 1.
-#'
-#' @return 
-#' \item{pi}{A matrix of estimated proportion. First row and second row 
-#' corresponds to the proportion estimate for the known components and unkown 
-#' component respectively for two or three component settings, and each column 
-#' corresponds to one sample.}
-#' \item{pi.iter}{Estimated proportions in each iteration. It is a \eqn{niter 
-#' *Ny*p} array, where \eqn{p} is the number of components. This is 
-#' enabled only when output.more.info = TRUE.}
-#' \item{gene.name}{The names of genes used in estimating the proportions. 
-#' If no gene names are provided in the original data set, the genes will
-#' be automatically indexed.}
-#' 
+#' available in the system. The default is the number of whole threads minus
+#' one. In our no-OpenMP version, it is set to 1.
+#' @return \item{pi}{A matrix of estimated proportion. First row and second row
+#' corresponds to the proportion estimate for the known components and unkown
+#' component respectively for two or three component settings, and each column
+#' corresponds to one sample.} \item{pi.iter}{Estimated proportions in each
+#' iteration. It is a \eqn{niter *Ny*p} array, where \eqn{p} is the number of
+#' components. This is enabled only when output.more.info = TRUE.}
+#' \item{gene.name}{The names of genes used in estimating the proportions.  If
+#' no gene names are provided in the original data set, the genes will be
+#' automatically indexed.}
 #' @author Zeya Wang, Wenyi Wang
-#' 
 #' @seealso http://bioinformatics.mdanderson.org/main/DeMixT
-#'
+#' @references Wang Z, Cao S, Morris J S, et al. Transcriptome Deconvolution of
+#' Heterogeneous Tumor Samples with Immune Infiltration. iScience, 2018, 9:
+#' 451-460.
+#' @keywords DeMixT_DE
 #' @examples
+#' 
 #' # Example 1: estimate proportions for simulated two-component data 
 #' # with spike-in normal reference
 #'   data(test.data.2comp)
@@ -101,15 +99,10 @@
 #' #                     data.N2 = test.data.3comp$data.N2, 
 #' #                     if.filter = TRUE)
 #' 
-#' @references Wang Z, Cao S, Morris J S, et al. Transcriptome Deconvolution of 
-#' Heterogeneous Tumor Samples with Immune Infiltration. iScience, 2018, 9: 451-460.
 #' 
-#' @keywords DeMixT_DE
-#' 
-#' @export 
 DeMixT_DE <- function (data.Y, data.N1, data.N2 = NULL, niter = 10, 
                        nbin = 50, if.filter = TRUE, filter.sd = 0.5,
-                       ngene.selected.for.pi = NA, nspikein = NULL,
+                       ngene.selected.for.pi = NA, nspikein = min(200, ceiling(ncol(data.Y)*0.3)),
                        mean.diff.in.CM = 0.25, tol = 10^(-5),
                        pi01 = NULL, pi02 = NULL,
                        nthread = parallel::detectCores() - 1) 

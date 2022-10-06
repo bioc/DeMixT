@@ -2,8 +2,8 @@
 % Please edit documentation in R/DeMixT_GS.R
 \name{DeMixT_GS}
 \alias{DeMixT_GS}
-\title{Estimates the proportions of mixed samples for each mixing component 
-using profile likelihood gene selection}
+\title{Estimates the proportions of mixed samples for each mixing component using
+profile likelihood gene selection}
 \usage{
 DeMixT_GS(
   data.Y,
@@ -16,7 +16,7 @@ DeMixT_GS(
   ngene.Profile.selected = NA,
   ngene.selected.for.pi = NA,
   mean.diff.in.CM = 0.25,
-  nspikein = NULL,
+  nspikein = min(200, ceiling(ncol(data.Y) * 0.3)),
   tol = 10^(-5),
   pi01 = NULL,
   pi02 = NULL,
@@ -24,25 +24,24 @@ DeMixT_GS(
 )
 }
 \arguments{
-\item{data.Y}{A SummarizedExperiment object of expression data from mixed 
-tumor samples. It is a \eqn{G} by \eqn{My} matrix where \eqn{G} is the number
-of genes and \eqn{My} is the number of mixed samples. Samples with the same
-tissue type should be placed together in columns.}
+\item{data.Y}{A SummarizedExperiment object of expression data from mixed
+tumor samples. It is a \eqn{G} by \eqn{My} matrix where \eqn{G} is the
+number of genes and \eqn{My} is the number of mixed samples. Samples with
+the same tissue type should be placed together in columns.}
 
-\item{data.N1}{A SummarizedExperiment object of expression data 
-from reference component 1 (e.g., normal). It is a \eqn{G} by \eqn{M1} matrix 
-where \eqn{G} is the number of genes and \eqn{M1} is the number of samples 
+\item{data.N1}{A SummarizedExperiment object of expression data from
+reference component 1 (e.g., normal). It is a \eqn{G} by \eqn{M1} matrix
+where \eqn{G} is the number of genes and \eqn{M1} is the number of samples
 for component 1.}
 
 \item{data.N2}{A SummarizedExperiment object of expression data from
-additional reference samples. It is a \eqn{G} by \eqn{M2} matrix where 
+additional reference samples. It is a \eqn{G} by \eqn{M2} matrix where
 \eqn{G} is the number of genes and \eqn{M2} is the number of samples for
 component 2. Component 2 is needed only for running a three-component model.}
 
-\item{niter}{The maximum number of iterations used in the algorithm of 
-iterated conditional modes. A larger value better guarantees 
-the convergence in estimation but increases the running time. The default is 
-10.}
+\item{niter}{The maximum number of iterations used in the algorithm of
+iterated conditional modes. A larger value better guarantees the convergence
+in estimation but increases the running time. The default is 10.}
 
 \item{nbin}{The number of bins used in numerical integration for computing
 complete likelihood. A larger value increases accuracy in estimation but
@@ -52,78 +51,78 @@ problem. The default is 50.}
 \item{if.filter}{The logical flag indicating whether a predetermined filter
 rule is used to select genes for proportion estimation. The default is TRUE.}
 
-\item{filter.sd}{The cut-off for the standard deviation of lognormal 
+\item{filter.sd}{The cut-off for the standard deviation of lognormal
 distribution. Genes whose log transferred standard deviation smaller than
 the cut-off will be selected into the model. The default is TRUE.}
 
 \item{ngene.Profile.selected}{The number of genes used for proportion
-estimation ranked by profile likelihood. The default is 
+estimation ranked by profile likelihood. The default is
 \eqn{min(1500,0.1*G)}, where \eqn{G} is the number of genes.}
 
 \item{ngene.selected.for.pi}{The percentage or the number of genes used for
 proportion estimation. The difference between the expression levels from
 mixed tumor samples and the known component(s) are evaluated, and the most
 differential expressed genes are selected, which is called DE. It is enabled
-when if.filter = TRUE. The default is \eqn{min(1500, 0.3*G)}, where
-\eqn{G} is the number of genes. Users can also try using more genes,
-ranging from \eqn{0.3*G} to \eqn{0.5*G}, and evaluate the outcome.}
+when if.filter = TRUE. The default is \eqn{min(1500, 0.3*G)}, where \eqn{G}
+is the number of genes. Users can also try using more genes, ranging from
+\eqn{0.3*G} to \eqn{0.5*G}, and evaluate the outcome.}
 
 \item{mean.diff.in.CM}{Threshold of expression difference for selecting
-genes in the component merging strategy. We merge three-component to 
+genes in the component merging strategy. We merge three-component to
 two-component by selecting genes with similar expressions for the two known
-components. Genes with the mean differences less than the threshold will 
-be selected for component merging. It is used in the three-component 
-setting, and is enabled when if.filter = TRUE. The default is 0.25.}
+components. Genes with the mean differences less than the threshold will be
+selected for component merging. It is used in the three-component setting,
+and is enabled when if.filter = TRUE. The default is 0.25.}
 
 \item{nspikein}{The number of spikes in normal reference used for proportion
-estimation. The default value is \eqn{ min(200, 0.3*My)}, where 
-\eqn{My} the number of mixed samples. If it is set to 0, proportion 
-estimation is performed without any spike in normal reference.}
+estimation. The default value is \eqn{ min(200, 0.3*My)}, where \eqn{My} the
+number of mixed samples. If it is set to 0, proportion estimation is
+performed without any spike in normal reference.}
 
 \item{tol}{The convergence criterion. The default is 10^(-5).}
 
-\item{pi01}{Initialized proportion for first kown component. The default is 
+\item{pi01}{Initialized proportion for first kown component. The default is
 \eqn{Null} and pi01 will be generated randomly from uniform distribution.}
 
-\item{pi02}{Initialized proportion for second kown component. pi02 is needed 
-only for running a three-component model. The default is \eqn{Null} and pi02 
+\item{pi02}{Initialized proportion for second kown component. pi02 is needed
+only for running a three-component model. The default is \eqn{Null} and pi02
 will be generated randomly from uniform distribution.}
 
-\item{nthread}{The number of threads used for deconvolution when OpenMP 
-is available in the system. The default is the number of whole threads
-minus one. In our no-OpenMP version, it is set to 1.}
+\item{nthread}{The number of threads used for deconvolution when OpenMP is
+available in the system. The default is the number of whole threads minus
+one. In our no-OpenMP version, it is set to 1.}
 }
 \value{
-\item{pi}{A matrix of estimated proportion. First row and second row 
-corresponds to the proportion estimate for the known components and unkown 
-component respectively for two or three component settings, and each column 
-corresponds to one sample.}
-\item{pi.iter}{Estimated proportions in each iteration. It is a \eqn{niter 
-*My*p} array, where \eqn{p} is the number of components. This is 
-enabled only when output.more.info = TRUE.}
-\item{gene.name}{The names of genes used in estimating the proportions. 
-If no gene names are provided in the original data set, the genes will
-be automatically indexed.}
+\item{pi}{A matrix of estimated proportion. First row and second row
+corresponds to the proportion estimate for the known components and unkown
+component respectively for two or three component settings, and each column
+corresponds to one sample.} \item{pi.iter}{Estimated proportions in each
+iteration. It is a \eqn{niter *My*p} array, where \eqn{p} is the number of
+components. This is enabled only when output.more.info = TRUE.}
+\item{gene.name}{The names of genes used in estimating the proportions.  If
+no gene names are provided in the original data set, the genes will be
+automatically indexed.}
 }
 \description{
-This function is designed to estimate the proportions of all 
-mixed samples for each mixing component with a new proposed profile likelihood 
-based gene selection, which can select most identifiable genes as reference 
-gene sets to achieve better model fitting quality. We first calculated the
-Hessian matrix of the parameter spaces and then derive the confidence interval 
-of the profile likelihood of each gene. We then utilized the length of 
-confidence interval as a metric to rank the identifiability of genes. As 
-a result, the proposed gene selection approach can improve the tumor-specific 
+This function is designed to estimate the proportions of all mixed samples
+for each mixing component with a new proposed profile likelihood based gene
+selection, which can select most identifiable genes as reference gene sets
+to achieve better model fitting quality. We first calculated the Hessian
+matrix of the parameter spaces and then derive the confidence interval of
+the profile likelihood of each gene. We then utilized the length of
+confidence interval as a metric to rank the identifiability of genes. As a
+result, the proposed gene selection approach can improve the tumor-specific
 transcripts proportion estimation.
 }
 \note{
 A Hessian matrix file will be created in the working directory and the
 corresponding Hessian matrix with an encoded name from the mixed tumor
-sample data will be saved under this file. If a user reruns this function 
-with the same dataset, this Hessian matrix will be loaded to in place of 
+sample data will be saved under this file. If a user reruns this function
+with the same dataset, this Hessian matrix will be loaded to in place of
 running the profile likelihood method and reduce running time.
 }
 \examples{
+
 
 # Example 1: estimate proportions for simulated two-component data 
 # with spike-in normal reference
@@ -146,11 +145,11 @@ running the profile likelihood method and reduce running time.
 #                    tol = 10^(-5))
 
 
+
 }
 \references{
-Gene Selection and Identifiability Analysis of RNA 
-Deconvolution Models using Profile Likelihood. Manuscript in 
-preparation.
+Gene Selection and Identifiability Analysis of RNA Deconvolution
+Models using Profile Likelihood. Manuscript in preparation.
 }
 \seealso{
 http://bioinformatics.mdanderson.org/main/DeMixT

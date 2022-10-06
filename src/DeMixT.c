@@ -8,6 +8,7 @@
   #include <stdlib.h>
   #include <math.h>
   #include <time.h>
+  #include <R.h>
   #include <string.h>
   #include <float.h> /* DBL_EPSILON */
   #include "DeMixTH.h"

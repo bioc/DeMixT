@@ -7,6 +7,14 @@ header-includes: \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
 # DeMixT Log
 Cell type-specific deconvolution of heterogeneous tumor samples with two or three components using expression data from RNAseq or microarray platforms.
 
+## Update from version 1.12.0 to 1.14.0
+
+Added preprocessing functions and modified vignettes accordingly
+
+Included R.h in DeMixT.c to fix compilation error caused by Rprintf.
+
+Fixed the logic operation in the  IF_inverse function of DeMixT_GS.
+
 ## Update from version 1.8.1 to 1.8.2
 
 Revised the link for citation. 
