@@ -298,6 +298,7 @@ subset_sd_gene_remaining <- function(count.matrix, normal.id, tumor.id,
 #'  column names are sample ids. 
 #' @param normal.id A vector of normal sample ids
 #' @param tumor.id A vector of tumor sample ids
+#' @param selected.genes A integer number indicating the number of genes selected before running DeMixT with the GS (Gene Selection) method
 #' @param cutoff_normal_range A vector of two numeric values, indicating the lower and upper bounds of standard deviation of 
 #' log2 count matrix from the normal samples to subset. Default is c(0.2, 0.6)
 #' @param cutoff_tumor_range A vector of two numeric values, indicating the lower and upper bounds to search standard deviation of 
@@ -308,25 +309,36 @@ subset_sd_gene_remaining <- function(count.matrix, normal.id, tumor.id,
 #' @return processed count matrix 
 #' 
 #' @export DeMixT_preprocessing
-DeMixT_preprocessing <- function(count.matrix, normal.id, tumor.id,
+DeMixT_preprocessing <- function(count.matrix, normal.id, tumor.id, 
+                                 selected.genes = 9000,
                                  cutoff_normal_range=c(0.1, 1.0), 
                                  cutoff_tumor_range=c(0, 2.5), 
                                  cutoff_step=0.2){
   
-  num_gene_remaining_different_cutoffs <- subset_sd_gene_remaining(count.matrix, normal.id, tumor.id, 
+
+  stopifnot(cutoff_normal_range[1] >= 0)
+  stopifnot(cutoff_tumor_range[1] >= 0)
+  stopifnot(cutoff_normal_range[2] >= cutoff_normal_range[0])
+  stopifnot(cutoff_tumor_range[2] >= cutoff_tumor_range[0])
+
+  stopifnot(cutoff_step > 0)
+  stopifnot(selected.genes > 0)
+  ##stopifnot(is.integer(selected.genes))
+
+  num_gene_remaining_different_cutoffs <- subset_sd_gene_remaining(count.matrix, normal.id, tumor.id,
                                                                    cutoff_normal_range, 
                                                                    cutoff_tumor_range,
                                                                    cutoff_step)
   
   
-  num_gene_remaining_different_cutoffs_filter <- num_gene_remaining_different_cutoffs[which(num_gene_remaining_different_cutoffs$num.gene.remaining - 9000 > 0), ]
+  num_gene_remaining_different_cutoffs_filter <- num_gene_remaining_different_cutoffs[which(num_gene_remaining_different_cutoffs$num.gene.remaining - selected.genes > 0), ]
   num_gene_remaining_different_cutoffs_filter <- num_gene_remaining_different_cutoffs_filter[order(num_gene_remaining_different_cutoffs_filter$num.gene.remaining), ]
   sd_cutoff_normal <- c(num_gene_remaining_different_cutoffs_filter$normal.cutoff.low[1], num_gene_remaining_different_cutoffs_filter$normal.cutoff.high[1])
   sd_cutoff_tumor <- c(num_gene_remaining_different_cutoffs_filter$tumor.cutoff.low[1], num_gene_remaining_different_cutoffs_filter$tumor.cutoff.high[1])
   
   count.matrix <- subset_sd(count.matrix, normal.id, tumor.id, cutoff_normal = sd_cutoff_normal, cutoff_tumor = sd_cutoff_tumor)
   
-  count.matrix = quantile_normalization(count.matrix)
+  count.matrix = scale_normalization_75th_percentile(count.matrix)
   
   preprocessing_output <- list()
   

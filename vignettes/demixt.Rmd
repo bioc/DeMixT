@@ -431,128 +431,258 @@ ggplot(res.3comp, aes(x=True.Proportion, y=Estimated.Proportion, group = Compone
 
 ## 6.4 Real data: PRAD in TCGA dataset
 
-### 6.4.1 Preprocessing
-For the deconvolution of real data with DeMixT, the user may apply the following preprocessing steps first. Here, we use the PRAD (prostate adenocarcinoma) from TCGA as an example. 
+Here, we use a subset of the bulk RNAseq data of prostate adenocarcinoma (PRAD) from TCGA (https://portal.gdc.cancer.gov/) as an example. The analysis pipeline consists of the following steps:
 
-1. **(Optional) Remove suspicious samples by hierarchical clustering**
-   
-It is possible that the some of the tumor and normal samples are mislabelled. We use the function
-```
-# hc_labels <- detect_suspicious_sample_by_hierarchical_clustering_2comp(count.matrix, normal.id, tumor.id)
-```   
-to visually inspect the separation of tumor and normal samples based on the hierarchical clustering of their expressions, in which ``count.matrix`` is the raw count matrix; ``normal.id`` and ``tumor.id`` are the vectors of normal and tumor sample ids, respectively.  Generally, one cluster contains tumor samples and the other contains normal samples. Any samples that are clustered outside of its own group label, e.g., tumor samples clustered within the normal sample cluster or normal samples in the tumor cluster, are considered as mislabelled samples and filtered out.
+-   Obtaining raw read counts for the tumor and normal RNAseq data
+-   Loading libraries and data
+-   Data preprocessing
+-   Deconvolution using DeMixT
 
-```{r hierarchical_clustering, echo=FALSE, out.width='85%', fig.align='center'}
-knitr::include_graphics(path = paste0("hierarchical_clustering.png"))
-```
+### 6.4.1 Obtain raw read counts for the tumor and normal RNAseq data
 
-``count.matrix``, ``normal.id `` and ``tumor.id`` are updated by
-```{r}
-# normal.id <- setdiff(normal.id, names(hc_labels$cluster[hc_labels$cluster == 1]))
-# tumor.id <- setdiff(tumor.id, names(hc_labels$cluster[hc_labels$cluster == 2]))
-# count.matrix <- count.matrix[, c(normal.id, tumor.id)]
+The raw read counts for the tumor and normal samples from TCGA PRAD are downloaded from [TCGA data portal](https://portal.gdc.cancer.gov/). One can also generate the raw read counts from fastq or bam files by following the [GDC mRNA Analysis Pipeline](https://docs.gdc.cancer.gov/Data/Bioinformatics_Pipelines/Expression_mRNA_Pipeline/).
+
+### 6.4.2 Obtain raw read counts for the tumor and normal RNAseq data
+
+Load input data (available at [PRAD.RData](./PRAD.RData))
+```{r load_data, fig.height = 4, fig.width = 6, fig.align='center', warning=FALSE}          
+load("PRAD.RData")
 ```
 
-2. **Select genes with small variation in gene expression across samples**
-   
-In this step, we select a subset of ~9000 genes from the original gene set (>50,000) before running DeMixT with the GS (Gene Selection) method so that our model-based gene selection maintains good statistical properties. We use the function 
+Three data are included in the `PRAD.RData` file. 
 
-```
-# plot_sd(count.matrix, normal.id, tumor.id)
-```
-to visualize the distribution of standard deviation of log2 expressions space of normal and tumor samples, 
-```{r plot_sd, echo=FALSE, out.width='85%', fig.align='center'}
-knitr::include_graphics(path = paste0("sd_expresion.png"))
-```
-and use the function 
+-   `PRAD`: Read counts matrix (gene x sample) with genes as row names and sample ids as column names. 
+-   `Normal.id`: TCGA ids of PRAD normal samples. 
+-   `Tumor.id` TCGA ids of PRAD tumor samples.
 
+A glimpse of `PRAD`:
+```{r view_data, fig.height = 4, fig.width = 6, fig.align='center', warning=FALSE}          
+head(PRAD[,1:5])
+cat('Number of genes: ', dim(PRAD)[1], '\n')
+cat('Number of normal sample: ', length(Normal.id), '\n')
+cat('Number of tumor sample: ', length(Tumor.id), '\n')
 ```
-# num_gene_remaining_different_cutoffs <- subset_sd_gene_remaining(count.matrix, normal.id, tumor.id, cutoff_normal_range = c(0.1, 1.0),  cutoff_tumor_range = c(0, 2.5), cutoff_step = 0.1)
-```
-to find he a range of variance in genes from normal samples ``(cutoff_normal_range)`` and from tumor samples ``(cutoff_tumor_range)`` which results in roughly 9,000 genes.
+### 6.4.3 Data preprocessing
 
-We then use the function 
-```
-# count.matrix <- subset_sd(count.matrix, normal.id, tumor.id, cutoff_normal = cutoff_normal_range, cutoff_tumor = cutoff_tumor_range)
-```
-to update the ``count.matrix`` such that it only includes the selected genes.
+Conduct data cleaning and normalization before running DeMixT.
 
-3. **Scale normalization**
-   
-We apply a scale normalization at the 75th percentile across all the tumor and normal samples using the function
+```         
+PRAD = PRAD[, c(Normal.id, Tumor.id)]
+selected.genes = 9000
+cutoff_normal_range = c(0.1, 1.0)
+cutoff_tumor_range = c(0, 2.5)
+cutoff_step = 0.1
 
-```
-# count.matrix <- scale_normalization_75th_percentile(count.matrix)
-```
-to adjust the expression levels in the samples. 
+preprocessed_data = DeMixT_preprocessing(PRAD,
+                                         Normal.id,
+                                         Tumor.id,
+                                         selected.genes,
+                                         cutoff_normal_range,
+                                         cutoff_tumor_range,
+                                         cutoff_step)
+PRAD_filter = preprocessed_data$count.matrix
+sd_cutoff_normal = preprocessed_data$sd_cutoff_normal
+sd_cutoff_tumor = preprocessed_data$sd_cutoff_tumor
 
-**Note**: The user may also use the function 
-```
-# count.matrix <- DeMixT_preprocessing(count.matrix, normal.id, tumor.id, cutoff_normal_range = c(0.1, 1.0),  cutoff_tumor_range = c(0, 2.5), cutoff_step = 0.1)
-```
-to perform the preprocessing steps of 2) and 3) in one go.
-
-
-4. **(Optional) Batch effect correction for tumor samples from different batches by ComBat**
-
-If the tumor samples are from different batches, we recommend the user to inspect the batch effect using the function before running DeMixT 
-```
-# plot_dim(count.matrix.tumor, labels, legend.position = 'bottomleft', legend.cex = 1.2)
-```
-This function will generate a PCA plot, in which the samples are colored by the ``labels`` indicating different batches of tumor samples, as well as normal samples. If there is a clear separation between different batches of tumor samples, there is likely batch effects. We use the function 
-```
-# count.matrix.tumor <- batch_correction(count.matrix.tumor, labels)
-```
-to reduce this effect, where ``count.matrix.tumor`` is the raw count matrix only from tumor samples and ``labels`` is the factor of tumor batches. The user may choose other batch effect correction methods at this step.
-
-The user may inspect the batch effect again after the above step using the mentioned function
-```
-# plot_dim(count.matrix.tumor, labels, legend.position = 'bottomleft', legend.cex = 1.2)
+cat("Normal sd cutoff:", preprocessed_data$sd_cutoff_normal, "\n")
+cat("Tumor sd cutoff:", preprocessed_data$sd_cutoff_tumor, "\n")
+cat('Number of genes after filtering: ', dim(PRAD_filter)[1], '\n')
 ```
 
-### 6.4.2 Deconvolution using DeMixT
-To optimize the DeMixT parameter setting for the input data, we recommend testing an array of combinations of the number of spike-ins and the number of selected genes.
+The function `DeMixT_preprocessing` identifies two intervals based on the standard deviation of the log-transformed gene expression for normal and tumor samples, respectively, within the pre-defined ranges (`cutoff_normal_range` and `cutoff_tumor_range`). In this example, we choose to select about 9000 genes before running DeMixT with the GS (Gene Selection) method to ensure that our model-based gene selection maintains good statistical properties.
 
-The number of CPU cores used by the DeMixT function for parallel computing is specified by the parameter ``nthread``. By default (such as in the code block below), ``nthread = total_number_of_cores_on_the_machine - 1``. The user can change ``nthread`` to a number between 0 and the total number of cores on the machine.
+`DeMixT_preprocessing` outputs a list object called `preprocessed_data` which contains:
+
+-   `preprocessed_data$count.matrix`: Preprocesssed count matrix
+-   `preprocessed_data$sd_cutoff_normal`: Actual cut-off value when desired number of genes are selected for normal samples
+-   `preprocessed_data$sd_cutoff_tumor`: Actual cut-off value when desired number of genes are selected for tumor samples
+
+### 6.4.4 Deconvolution using DeMixT
+To optimize the parameters in `DeMixT` for input data, we recommend testing an array of combinations of number of spike-ins and number of selected genes.
+
+The number of CPU cores used by the `DeMixT` function for parallel computing is specified by the parameter `nthread`. By default, `nthread = total_number_of_cores_on_the_machine - 1`. Users can adjust `nthread` to any number between 0 and the total number of cores available on the machine. For reference, `DeMixT` takes approximately 3-4 minutes to process the PRAD data in this tutorial for each parameter combination when `nthread` is set to 55.
 
 ```
-## Because of the random initial values and the spike-in samples within the DeMixT function, 
-## we would like to remind the user to set seeds to keep track. This seed setting will be 
-## internalized in DeMixT in the next update.
+# Due to the random initial values and the spike-in samples used in the DeMixT function,
+# we recommand that users set seeds to ensure reproducibility.
+# This seed setting will be incorporated internally in DeMixT in the next update.
 
-# set.seed(1234)
+set.seed(1234)
 
-# data.Y = SummarizedExperiment(assays = list(counts = count.matrix[, tumor.id]))
-# data.N1 <- SummarizedExperiment(assays = list(counts = count.matrix[, normal.id]))
+data.Y = SummarizedExperiment(assays = list(counts = PRAD_filter[, Tumor.id]))
+data.N1 <- SummarizedExperiment(assays = list(counts = PRAD_filter[, Normal.id]))
 
-## In practice, we set the maximum number of spike-in as min(n/3, 200), 
-## where n is the number of samples. 
-# nspikesin_list = c(0, 50, 100, 150)
-## One may set a wider range than provided below for studies other than TCGA.
-# ngene.selected_list = c(500, 1000, 1500, 2500)
+# In practice, we set the maximum number of spike-in as min(n/3, 200),
+# where n is the number of samples.
+nspikesin_list = c(0, 5, 10)
+# One may set a wider range than provided below for studies other than TCGA.
+ngene.selected_list = c(500, 1000, 1500, 2500)
 
-#for(nspikesin in nspikesin_list){
-#    for(ngene.selected in ngene.selected_list){
-#        name = paste("PRAD_demixt_GS_res_nspikesin", nspikesin, "ngene.selected", 
-#                      ngene.selected,  sep = "_");
-#        name = paste(name, ".RData", sep = "");
-#        res = DeMixT(data.Y = data.Y,
-#                     data.N1 = data.N1,
-#                     ngene.selected.for.pi = ngene.selected,
-#                     ngene.Profile.selected = ngene.selected,
-#                     filter.sd = 0.7, # same upper bound of gene expression standard deviation 
-#                     # for normal reference. i.e., preprocessed_data$sd_cutoff_normal[2]
-#                     gene.selection.method = "GS",
-#                     nspikein = nspikesin)
-#        save(res, file = name)
-#    }
-#}
+for(nspikesin in nspikesin_list){
+    for(ngene.selected in ngene.selected_list){
+        name = paste("PRAD_demixt_GS_res_nspikesin", nspikesin, "ngene.selected",
+                      ngene.selected,  sep = "_");
+        name = paste(name, ".RData", sep = "");
+        res = DeMixT(data.Y = data.Y,
+                     data.N1 = data.N1,
+                     ngene.selected.for.pi = ngene.selected,
+                     ngene.Profile.selected = ngene.selected,
+                     filter.sd = 0.7, # We recommand to use upper bound of gene expression standard deviation
+                     # for normal reference. i.e., preprocessed_data$sd_cutoff_normal[2]
+                     gene.selection.method = "GS",
+                     nspikein = nspikesin)
+        save(res, file = name)
+    }
+}
 ```
-We suggest selecting the optimal parameter combination that produces the largest average correlation of estimated tumor propotions with those produced by other combinations. The location of the mode of the Pi estimation may also be considered. The mode located too high or too low may suggest biased estimation.
+
+**Note:** We use a profiling likelihood-based method to select genes, during which we calculate confidence intervals for the model parameters using the inverse of the Hessian matrix. When the input data (e.g., gene expression levels from spatial transcriptomic data) is sparse, the Hessian matrix will contain infinite values, hence those confidence intervals can’t be calculated. In this case, gene selection will be performed through differential expression analysis (identical to `DeMix_DE`). This alternative is automatically performed inside `DeMix_GS` when the above situation happens.
+
+```       
+PiT_GS_PRAD <- c()
+row_names <- c()
+
+for(nspikesin in nspikesin_list){
+    for(ngene.selected in ngene.selected_list){
+        name_simplify <- paste(nspikesin, ngene.selected,  sep = "_")
+        row_names <- c(row_names, name_simplify)
+        
+        name = paste("PRAD_demixt_GS_res_nspikesin", nspikesin, 
+                      "ngene.selected", ngene.selected,  sep = "_");
+        name = paste(name, ".RData", sep = "")
+        load(name)
+        PiT_GS_PRAD <- cbind(PiT_GS_PRAD, res$pi[2, ])
+    }
+}
+colnames(PiT_GS_PRAD) <- row_names
+```
+
+This step saves the deconvolution results (PiT) into a dataframe with columns named after the combination of the number of spike-ins and number of genes selected. Then one can calculate and plot the pairwise correlations of estimated tumor proportions across different parameter combinations as shown below.
+
+```         
+pairs.panels(PiT_GS_PRAD,
+            method = "spearman", # correlation method
+            hist.col = "#00AFBB",
+            density = TRUE,  # show density plots
+            ellipses = TRUE, # show correlation ellipses
+            main = 'Correlations of Tumor Proportions with GS between Different Parameter 
+            Combination',
+            xlim = c(0,1),
+            ylim = c(0,1))
+```
+```{r correlation, echo=FALSE, out.width='100%'}
+knitr::include_graphics(path = paste0("pairwise_correlation.png"))
+```
+
+Print out the average pairwise correlation of tumor proportions across different parameter combinations.
+
+```         
+PiT_GS_PRAD <- as.data.frame(PiT_GS_PRAD)
+Spearman_correlations <- list()
+
+for(entry_1 in colnames(PiT_GS_PRAD)) {
+  cor.values <- c()
+  for (entry_2 in colnames(PiT_GS_PRAD)) {
+    if (entry_1 == entry_2)
+      next
+    
+    cor.values <- c(cor.values, 
+                    cor(PiT_GS_PRAD[, entry_1], 
+                    PiT_GS_PRAD[, entry_2], 
+                    method = "spearman"))
+  }
+  
+  Spearman_correlations[[entry_1]] <- mean(cor.values)
+}
+
+Spearman_correlations <- unlist(Spearman_correlations)
+Spearman_correlations <- data.frame(num.spikein_num.selected.gene=names(Spearman_correlations), mean.correlation=Spearman_correlations)
+
+Spearman_correlations
+```
+
+The average correlation coefficient coefficients are listed below.
+
+```         
+num.spikein_num.selected.gene   mean.correlation
+0_500   0.8641319       
+0_1000  0.9453534       
+0_1500  0.9401355       
+0_2500  0.9375468       
+5_500   0.9207604       
+5_1000  0.9542926       
+5_1500  0.9460006       
+5_2500  0.8992011       
+10_500  0.9237941       
+10_1000 0.9357266   
+10_1500 0.9249267       
+10_2500 0.9002124
+```
+
+We suggest selecting the optimal parameter combination that produces the highest average correlation of estimated tumor proportions. Additionally, users are encouraged to evaluate the skewness of the PiT estimation distribution compared to a normal distribution centered around 0.5, as significant skewness may indicate biased estimation.
+
+Based on these criteria, `spike-ins = 5` and `number of selected genes = 1000` are identified as the optimal parameter combination. Using these parameters, we can obtain the corresponding tumor proportions for each sample.
+
+```         
+data.frame(sample.id=Tumor.id, PiT=PiT_GS_PRAD[['5_1000']])
+
+sample.id               PiT
+TCGA-2A-A8VL-01A    0.7596888           
+TCGA-2A-A8VO-01A    0.8421716           
+TCGA-2A-A8VT-01A    0.8662378           
+TCGA-2A-A8VV-01A    0.7616749           
+TCGA-2A-A8W1-01A    0.8291091           
+TCGA-2A-A8W3-01A    0.8159406           
+TCGA-CH-5737-01A    0.7314935           
+TCGA-CH-5738-01A    0.4614545           
+TCGA-CH-5739-01A    0.6349423           
+TCGA-CH-5740-01A    0.7095117   
+```
+
+List the tumor specific expression
+
+```         
+## Load the corresponding deconvolved gene expression
+load("PRAD_demixt_GS_res_nspikesin_5_ngene.selected_1000.RData")
+res$ExprT[1:5, 1:5]
+
+      TCGA-2A-A8VL-01A TCGA-2A-A8VO-01A TCGA-2A-A8VT-01A TCGA-2A-A8VV-01A TCGA-2A-A8W1-01A
+DPM1          1710.194         1466.484        1680.4562         1644.944         1812.600
+FUCA2         3782.990         4083.382         961.0578         4165.612         1896.901
+GCLC          2382.106         1826.957        1527.4895         1409.707         1913.784
+LAS1L         3329.766         2758.414        3520.9410         2834.415         2530.621
+ENPP4         2099.591         3123.365        3173.3516         2856.371         7413.330
+```
 
 Instead of selecting using the parameter combination with the highest correlation, one can also select the parameter combination that produces estimated tumor proportions that are most biologically meaningful.
 
-A comprehensive tutorial of using DeMixT for real data deconvolution can be found at [https://wwylab.github.io/DeMixT/tutorial.html](https://wwylab.github.io/DeMixT/tutorial.html).
+The estimated tumor-specific proportions (PiT) can be used to calculate TmS. See our [TmS tutorial](https://wwylab.github.io/TmS/articles/TmS.html).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 6.5 Deconvolution using normal reference samples from GTEx
 
