@@ -444,9 +444,9 @@ The raw read counts for the tumor and normal samples from TCGA PRAD are download
 
 ### 6.4.2 Obtain raw read counts for the tumor and normal RNAseq data
 
-Load input data (available at [PRAD.RData](./PRAD.RData))
+Load input data (available at [PRAD.RData](https://wwylab.github.io/DeMixT/etc/PRAD.RData))
 ```{r load_data, fig.height = 4, fig.width = 6, fig.align='center', warning=FALSE}          
-load("PRAD.RData")
+load(url("https://wwylab.github.io/DeMixT/etc/PRAD.RData"))
 ```
 
 Three data are included in the `PRAD.RData` file. 
