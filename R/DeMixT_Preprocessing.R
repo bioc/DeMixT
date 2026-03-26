@@ -12,8 +12,19 @@
 #'  column names are sample ids. 
 #' @param normal.id A vector of normal sample ids
 #' @param tumor.id A vector of tumor sample ids
+#'
 #' @return list object
-#' 
+#' @examples
+#' \donttest{
+#' set.seed(123)
+#' mat <- matrix(rpois(10000, lambda = 50), nrow = 500, ncol = 20)
+#' colnames(mat) <- c(paste0("N", 1:10), paste0("T", 1:10))
+#' rownames(mat) <- paste0("G", 1:500)
+#' normal.id <- paste0("N", 1:10)
+#' tumor.id <- paste0("T", 1:10)
+#' result <- detect_suspicious_sample_by_hierarchical_clustering_2comp(
+#'   mat, normal.id, tumor.id)
+#' }
 #' @export detect_suspicious_sample_by_hierarchical_clustering_2comp
 detect_suspicious_sample_by_hierarchical_clustering_2comp <- function(count.matrix, normal.id, tumor.id){
   if(length(normal.id) + length(tumor.id) != ncol(count.matrix)){
@@ -43,9 +54,9 @@ detect_suspicious_sample_by_hierarchical_clustering_2comp <- function(count.matr
   
   #pca analysis
   principal.res = prcomp(t(sTable[top.gene.index, ]),
-                         retx = T,
-                         center = T,
-                         scale = T)
+                         retx = TRUE,
+                         center = TRUE,
+                         scale = TRUE)
   
   top2.pcs <- principal.res$x[, 1:2]
   top2.pcs.dis <-  dist(top2.pcs, method = "euclidean")
@@ -81,6 +92,7 @@ detect_suspicious_sample_by_hierarchical_clustering_2comp <- function(count.matr
 }
 
 #' @title plot_sd
+#'
 #' @description Plot the standard deviation of log2 raw expression
 #' @name plot_sd
 #' @rdname detect_suspicious_sample_by_hierarchical_clustering_2comp
@@ -89,14 +101,14 @@ detect_suspicious_sample_by_hierarchical_clustering_2comp <- function(count.matr
 #'  column names are sample ids. 
 #' @param normal.id A vector of normal sample ids
 #' @param tumor.id A vector of tumor sample ids
-#' @return 
+#' @return None (creates plots)
 #' 
 #' @export plot_sd
 plot_sd  <- function(count.matrix, normal.id, tumor.id){
   if(length(normal.id) + length(tumor.id) != ncol(count.matrix)){
     stop("Total number of normal and tumor samples in normal.id and tumor.id must be the same with the numbe of columns in count.matrix.")
   }
-  count.matrix[which(count.matrix == 0, arr.ind = T)] = 1
+  count.matrix[which(count.matrix == 0, arr.ind = TRUE)] = 1
   sdn.obs <- apply(log2(count.matrix[, match(normal.id, colnames(count.matrix))]), 1, sd)
   sdm.obs <- apply(log2(count.matrix[, match(tumor.id, colnames(count.matrix))]), 1, sd)
   par(mfrow = c(1, 2))
@@ -108,26 +120,37 @@ plot_sd  <- function(count.matrix, normal.id, tumor.id){
 }
 
 #' @title subset_sd
-#' @description Subset a count matrix given the the ranges of the standard deviations of the 
-#' log2 expressions from the tumor and normal samples 
+#'
+#' @description Subset a count matrix given the the ranges of the standard deviations of the
+#' log2 expressions from the tumor and normal samples
 #' @name subset_sd
 #' @param count.matrix A matrix of raw expression count with \eqn{G} by \eqn{(My + M1)}, where \eqn{G} is the number
 #' of genes, \eqn{My} is the number of mixed samples and \eqn{M1} is the number of normal samples. Row names are genes
-#'  column names are sample ids. 
+#'  column names are sample ids.
 #' @param normal.id A vector of normal sample ids
 #' @param tumor.id A vector of tumor sample ids
-#' @param cutoff_normal A vector of two numeric values, indicating the lower and upper bounds of standard deviation of 
+#' @param cutoff_normal A vector of two numeric values, indicating the lower and upper bounds of standard deviation of
 #' log2 count matrix from the normal samples to subset. Default is c(0.1, 0.6)
-#' @param cutoff_tumor A vector of two numeric values, indicating the lower and upper bounds of standard deviation of 
+#' @param cutoff_tumor A vector of two numeric values, indicating the lower and upper bounds of standard deviation of
 #' log2 count matrix from the tumor samples to subset. Default is c(0.2, 0.8)
 #' @return A subset of the count matrix
 #' 
+#' @examples
+#' set.seed(123)
+#' mat <- matrix(rpois(2000, lambda = 50), nrow = 100, ncol = 20)
+#' colnames(mat) <- c(paste0("N", 1:10), paste0("T", 1:10))
+#' rownames(mat) <- paste0("G", 1:100)
+#' normal.id <- paste0("N", 1:10)
+#' tumor.id <- paste0("T", 1:10)
+#' result <- subset_sd(mat, normal.id, tumor.id,
+#'                     cutoff_normal = c(0.1, 0.6),
+#'                     cutoff_tumor = c(0.1, 0.8))
 #' @export subset_sd
-subset_sd <- function(count.matrix, normal.id, tumor.id, 
-                      cutoff_normal = c(0.1, 0.6), 
+subset_sd <- function(count.matrix, normal.id, tumor.id,
+                      cutoff_normal = c(0.1, 0.6),
                       cutoff_tumor = c(0.2, 0.8)){
-  
-  count.matrix[which(count.matrix == 0, arr.ind = T)] = 1
+
+  count.matrix[which(count.matrix == 0, arr.ind = TRUE)] = 1
   sdn.obs <- apply(log2(count.matrix[, match(normal.id, colnames(count.matrix))]), 1, sd)
   sdm.obs <- apply(log2(count.matrix[, match(tumor.id, colnames(count.matrix))]), 1, sd)
   indx <- which(sdn.obs > cutoff_normal[1] & sdn.obs < cutoff_normal[2] & sdm.obs > cutoff_tumor[1] & sdm.obs < cutoff_tumor[2])
@@ -136,18 +159,25 @@ subset_sd <- function(count.matrix, normal.id, tumor.id,
 }
 
 #' @title plot_dim
+#'
 #' @description Plot the distribution of tumor and normal samples in a 2D PCA space based on their expressions
 #' @name plot_dim
-#' @rdname detect_suspicious_sample_by_hierarchical_clustering_2comp
 #' @param count.matrix A matrix of raw expression count with \eqn{G} by \eqn{(My + M1)}, where \eqn{G} is the number
 #' of genes, \eqn{My} is the number of mixed samples and \eqn{M1} is the number of normal samples. Row names are genes
 #'  column names are sample ids. 
-#' @param normal.id A vector of normal sample ids
-#' @param tumor.id A vector of tumor sample ids
+#' @param labels A vector of sample labels for plotting
 #' @param legend.position Position of legend in the plot. Default is bottomleft.
 #' @param legend.cex Character expansion factor relative to current par("cex"). Default = 1.2
-#' @return
-#' 
+#' @return None (create plots)
+#' @examples
+#' \donttest{
+#' set.seed(123)
+#' mat <- matrix(rpois(2000, lambda = 50), nrow = 100, ncol = 20)
+#' colnames(mat) <- c(paste0("N", 1:10), paste0("T", 1:10))
+#' rownames(mat) <- paste0("G", 1:100)
+#' labels <- c(rep("Normal", 10), rep("Tumor", 10))
+#' plot_dim(mat, labels)
+#' }
 #' @export plot_dim
 plot_dim <- function(count.matrix, labels, 
                      legend.position = 'bottomleft',
@@ -159,10 +189,10 @@ plot_dim <- function(count.matrix, labels,
   
   N.label <- length(unique(labels))
   
-  count.matrix[which(count.matrix == 0, arr.ind = T)] = 1
+  count.matrix[which(count.matrix == 0, arr.ind = TRUE)] = 1
   ## PCA dimension reduction
   res = 0
-  res <- prcomp(t(log2(count.matrix)), center = T, scale. = T)
+  res <- prcomp(t(log2(count.matrix)), center = TRUE, scale. = TRUE)
   ## PC variance
   pct1 = round(res$sdev[1]/sum(res$sdev), 3)*100
   pct2 = round(res$sdev[2]/sum(res$sdev), 3)*100
@@ -185,7 +215,7 @@ plot_dim <- function(count.matrix, labels,
   ## add lines and centers
   for (ii in 1:length(center1)) {
     groupi<-cbind(dim1,dim2)[as.numeric(factor(labels))==ii, 1:2]
-    if (class(groupi)[1] =="matrix") {
+    if (is(groupi, "matrix")) {
       for (j in (1:nrow(groupi))) {
         segments(groupi[j,1], groupi[j,2], center1[ii], center2[ii], col = rainbow(N.label)[ii], lwd = 0.5)
       }
@@ -201,6 +231,7 @@ plot_dim <- function(count.matrix, labels,
 
 
 #' @title scale_normalization_75th_percentile
+#'
 #' @description Quantile normalization for the raw count matrix of tumor and normal reference using the 0.75 quantile scale normalization
 #' @name scale_normalization_75th_percentile
 #' @param count.matrix A matrix of raw expression count with \eqn{G} by \eqn{(My + M1)}, where \eqn{G} is the number
@@ -208,23 +239,25 @@ plot_dim <- function(count.matrix, labels,
 #'  column names are sample ids. 
 #' @return the scale normalized count matrix
 #' 
+#' @examples
+#' mat <- matrix(rpois(200, lambda = 50), nrow = 20, ncol = 10)
+#' colnames(mat) <- paste0("S", 1:10)
+#' rownames(mat) <- paste0("G", 1:20)
+#' result <- scale_normalization_75th_percentile(mat)
+#'
 #' @export scale_normalization_75th_percentile
 scale_normalization_75th_percentile <- function(count.matrix){
   newt <- count.matrix
   colnames(newt) = NULL
   rownames(newt) = NULL
   
-  designs=c(rep("0", dim(count.matrix)[2]))
-  seqData=newSeqCountSet(as.matrix(newt), designs)
+  k3 <- apply(as.matrix(newt), 2, function(x) quantile(x[x > 0], 0.75))
+  k3 <- k3 / min(k3)
   
-  # quantile normalization/total/median   ###try different normalization method###
-  seqData=estNormFactors(seqData, "quantile")
-  k3=seqData@normalizationFactor
-  mk3=median(k3)
-  k3=k3/mk3
+  mk3 <- median(k3)
+  k3 <- k3/mk3
   
   temp<-newt
-  
   for(i in 1:ncol(newt)){
     temp[,i] = temp[,i]/k3[i]
   }
@@ -237,6 +270,7 @@ scale_normalization_75th_percentile <- function(count.matrix){
 
 
 #' @title subset_sd_gene_remaining
+#'
 #' @description Find the cutoffs to filter out genes with large standard deviations of log2 expressions in both normal and tumor samples
 #' @name subset_sd_gene_remaining
 #' @param count.matrix A matrix of raw expression count with \eqn{G} by \eqn{(My + M1)}, where \eqn{G} is the number
@@ -248,9 +282,20 @@ scale_normalization_75th_percentile <- function(count.matrix){
 #' log2 count matrix from the normal samples to subset. Default is c(0.2, 0.6)
 #' @param cutoff_tumor_range A vector of two numeric values, indicating the lower and upper bounds to search standard deviation of 
 #' log2 count matrix from the normal samples to subset. Default is c(0.2, 0.6)
-#' @param cutoff_step A scatter value indicating the step size of changing cutoff_normal_range and cutoff_tumor_range to find a 
+#' @param cutoff_step A scatter value indicating the step size of changing cutoff_normal_range and cutoff_tumor_range to find a
 #' suitable subset of count matrix for downstream analysis
-#' 
+#' @return A numeric vector of the optimal cutoff values for normal and tumor standard deviations
+#' @examples
+#' set.seed(123)
+#' mat <- matrix(rpois(2000, lambda = 50), nrow = 100, ncol = 20)
+#' colnames(mat) <- c(paste0("N", 1:10), paste0("T", 1:10))
+#' rownames(mat) <- paste0("G", 1:100)
+#' normal.id <- paste0("N", 1:10)
+#' tumor.id <- paste0("T", 1:10)
+#' result <- subset_sd_gene_remaining(mat, normal.id, tumor.id,
+#'                                    cutoff_normal_range = c(0.1, 0.6),
+#'                                    cutoff_tumor_range = c(0.1, 0.8),
+#'                                    cutoff_step = 0.1)
 #' @export subset_sd_gene_remaining
 subset_sd_gene_remaining <- function(count.matrix, normal.id, tumor.id, 
                                      cutoff_normal_range = c(0.2, 0.6), 
@@ -260,7 +305,7 @@ subset_sd_gene_remaining <- function(count.matrix, normal.id, tumor.id,
   if(length(normal.id) + length(tumor.id) != ncol(count.matrix)){
     stop("Total number of normal and tumor samples in normal.id and tumor.id must be the same with the numbe of columns in count.matrix.")
   }
-  count.matrix[which(count.matrix == 0, arr.ind = T)] = 1
+  count.matrix[which(count.matrix == 0, arr.ind = TRUE)] = 1
   sdn.obs <- apply(log2(count.matrix[, match(normal.id, colnames(count.matrix))]), 1, sd)
   sdm.obs <- apply(log2(count.matrix[, match(tumor.id, colnames(count.matrix))]), 1, sd)
   
@@ -291,6 +336,7 @@ subset_sd_gene_remaining <- function(count.matrix, normal.id, tumor.id,
 }
 
 #' @title DeMixT_preprocessing
+#'
 #' @description DeMixT preprocessing in one go
 #' @name DeMixT_preprocessing
 #' @param count.matrix A matrix of raw expression count with \eqn{G} by \eqn{(My + M1)}, where \eqn{G} is the number
@@ -307,7 +353,18 @@ subset_sd_gene_remaining <- function(count.matrix, normal.id, tumor.id,
 #' suitable subset of count matrix for downstream analysis
 #' 
 #' @return processed count matrix 
-#' 
+#' @examples
+#' set.seed(123)
+#' mat <- matrix(rpois(10000, lambda = 50), nrow = 500, ncol = 20)
+#' colnames(mat) <- c(paste0("N", 1:10), paste0("T", 1:10))
+#' rownames(mat) <- paste0("G", 1:500)
+#' normal.id <- paste0("N", 1:10)
+#' tumor.id <- paste0("T", 1:10)
+#' result <- DeMixT_preprocessing(mat, normal.id, tumor.id,
+#'                                selected.genes = 100,
+#'                                cutoff_normal_range = c(0.1, 1.0),
+#'                                cutoff_tumor_range = c(0, 2.5),
+#'                                cutoff_step = 0.1)
 #' @export DeMixT_preprocessing
 DeMixT_preprocessing <- function(count.matrix, normal.id, tumor.id, 
                                  selected.genes = 9000,
@@ -318,8 +375,8 @@ DeMixT_preprocessing <- function(count.matrix, normal.id, tumor.id,
 
   stopifnot(cutoff_normal_range[1] >= 0)
   stopifnot(cutoff_tumor_range[1] >= 0)
-  stopifnot(cutoff_normal_range[2] >= cutoff_normal_range[0])
-  stopifnot(cutoff_tumor_range[2] >= cutoff_tumor_range[0])
+  stopifnot(cutoff_normal_range[2] >= cutoff_normal_range[1])
+  stopifnot(cutoff_tumor_range[2] >= cutoff_tumor_range[1])
 
   stopifnot(cutoff_step > 0)
   stopifnot(selected.genes > 0)
@@ -359,17 +416,23 @@ DeMixT_preprocessing <- function(count.matrix, normal.id, tumor.id,
 #'  column names are tumor sample ids. 
 #' @param batch_labels Factor of tumor samples from different batches
 #' @return Batch effect corrected count matrix for tumor samples
-#' 
+#' @examples
+#' set.seed(123)
+#' mat <- matrix(rpois(2000, lambda = 50), nrow = 100, ncol = 20)
+#' colnames(mat) <- paste0("S", 1:20)
+#' rownames(mat) <- paste0("G", 1:100)
+#' batch_labels <- factor(c(rep("batch1", 10), rep("batch2", 10)))
+#' result <- batch_correction(mat, batch_labels)
 #' @export batch_correction
 batch_correction <- function(count.matrix, batch_labels){
   
   if(length(batch_labels) != ncol(count.matrix)){
     stop("Total number of normal and tumor samples in normal.id and tumor.id must be the same with the numbe of columns in count.matrix.")
   }
-  count.matrix[which(count.matrix == 0, arr.ind = T)] = 1
+  count.matrix[which(count.matrix == 0, arr.ind = TRUE)] = 1
   count.matrix.combat.log2 = ComBat(dat = log2(count.matrix),
                                              batch = batch_labels, mod = NULL,
-                                             par.prior=TRUE, mean.only = F)
+                                             par.prior=TRUE, mean.only = FALSE)
   
   count.matrix.combat.combat <- 2^count.matrix.combat.log2
   return(count.matrix.combat.combat)

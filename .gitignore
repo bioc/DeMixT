@@ -1,0 +1,7 @@
+.DS_Store
+src/*.o
+src/*.so
+inst/.DS_Store
+vignettes/.DS_Store
+DeMixT_Log.Rmd
+DeMixT_Log.pdf

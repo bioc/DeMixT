@@ -1,6 +1,12 @@
 \name{NEWS}
 \title{News for Package \pkg{DeMixT}}
 
+\section{Version 2.0.0}{
+\itemize{
+\item
+Added DeMixNB: a negative binomial deconvolution method for sparse count data.
+}}
+
 \section{Version 1.6.0}{
 \itemize{
 \item
