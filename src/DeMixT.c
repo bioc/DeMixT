@@ -91,7 +91,7 @@ void Tdemix(double *data, int *nGroup, int *nsamp, int *ngenes, int *nspikein, i
   p = (PARAM *)calloc(1,sizeof(PARAM));
 
   // FD, Parameter initialized
-  FD = calloc(nS ,sizeof(double *));
+  FD = calloc((size_t)nS ,sizeof(double *));
 
 
   for(j=0;j<nS;j++) FD[j]= calloc(nG, sizeof(double));
