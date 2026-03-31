@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <R.h>
-#include <omp.h>
+#ifdef _OPENMP
+  #include<omp.h>
+#endif
 #include "DeMixNB.h"
 
 double Likelihood_NB(double y_ig, double pi_i, long l_ig, double mu_tg, 
