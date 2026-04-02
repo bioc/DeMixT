@@ -91,6 +91,7 @@ void Tdemix(double *data, int *nGroup, int *nsamp, int *ngenes, int *nspikein, i
   p = (PARAM *)calloc(1,sizeof(PARAM));
 
   // FD, Parameter initialized
+  if (nS <= 0) error("Number of samples must be positive");
   FD = calloc((size_t)nS ,sizeof(double *));
 
 
